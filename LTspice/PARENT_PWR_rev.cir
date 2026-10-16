@@ -1,0 +1,58 @@
+* ============================================================
+*  AquaBeacon PARENT_PWR -- 逆接続 (XT30を裏返して挿した) ケース
+*  内容は CHILD_PWR_rev.cir と同じ保護チェーン。下流の負荷だけ親機相当。
+*  検証: Q1遮断 / TVS順方向電流(IFSM=100A,8.3ms以内) / ヒューズ溶断時間
+*  実行は sim/parent_pwr_verify.py から。.param 行は手で書き換えないこと。
+* ============================================================
+
+.param VBAT0=12.6
+.param RINT=50m
+.param RCAB=30m
+.param LCAB=1u
+.param RFUSE=30m
+.param RSW=30m
+.param RSHUNT=2m
+.param TCON=200u
+.param I2TMELT=5.0       ; 速断=5-10 / 普通=15-30 / 遅動=40-70 [A^2*s]
+
+Vbat  nb   0    {-VBAT0}
+Rint  nb   nb2  {RINT}
+Lcab  nb2  nb3  {LCAB} Rser={RCAB} Rpar=20
+S_CON nb3  vbat ncon 0 SWC
+Vcon  ncon 0    PWL(0 0 {TCON} 0 {TCON+1u} 1)
+.model SWC SW(Ron=5m Roff=10Meg Vt=0.5 Vh=0)
+
+* ---------------- F1: 溶断モデル付き 3A管ヒューズ ----------------
+Rfuse vbat vbatf R={RFUSE} + 1Meg*limit((V(ni2t)-{I2TMELT})/(0.05*{I2TMELT}),0,1)
+Bi2t  0    ni2t  I=I(Rfuse)*I(Rfuse)
+Ci2t  ni2t 0     1
+
+* ---------------- D1: SMBJ15A 順方向 ----------------
+D1 0 vbatf TVSFWD
+.model TVSFWD D(Is=2e-9 N=1.6 Rs=0.025 Cjo=1.5n)
+Bi2tv 0 ni2ttvs I=I(D1)*I(D1)
+Ci2tv ni2ttvs 0 1
+
+* ---------------- Q1: 2SJ349 ----------------
+M1 vbatf qg vbatp J349
+Rg qg 0 100k
+.model J349 VDMOS(pchan Vto=-1.5 Kp=40 Lambda=0.01 Rd=35m Rs=5m Rg=2
++ Cgs=2n Cgdmax=1n Cgdmin=50p Cjo=1n Is=1e-12 mfg=Toshiba Vds=-60 Ron=45m Qg=50n)
+
+* ---------------- 下流 ----------------
+Rsw    vbatp  vbatsw {RSW}
+Rshunt vbatsw vbatm  {RSHUNT}
+Cblk vbatm 0 100u Rser=0.3     ; C_BLK 100u/25V(rev整合)
+Cbk1 vbatm 0 10u  Rser=0.02
+Rload vbatm 0 15
+
+Bvgs1 0 nvgs1 I=V(qg)-V(vbatp)
+Rvgs1 nvgs1 0 1
+Bvds1 0 nvds1 I=V(vbatf)-V(vbatp)
+Rvds1 nvds1 0 1
+
+.ic V(vbat)=0 V(vbatf)=0 V(vbatp)=0 V(vbatsw)=0 V(vbatm)=0 V(ni2t)=0 V(ni2ttvs)=0 V(qg)=0
+
+.options plotwinsize=0
+.tran 0 20m 0 2u uic
+.end

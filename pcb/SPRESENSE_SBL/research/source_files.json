@@ -1,0 +1,35 @@
+{
+  "download_date": "2026-09-14",
+  "documents": [
+    {
+      "file": "CXD5247GF_Sony_technical_manual.pdf",
+      "bytes": 1448314,
+      "sha256": "e01bc20e8f4b0ef4d30df26634d1eb3af3e8fe34f20966cf9d589f81e110bcf2",
+      "pages": 107
+    },
+    {
+      "file": "Spresense_CXD5602PWBEXT1_schematic.pdf",
+      "bytes": 240087,
+      "sha256": "cc0199e2d18eedd807e59ddabce1f46a4e72c21d59a5dd88534899d2a2b8df13",
+      "pages": 7
+    },
+    {
+      "file": "SMC20D17H5_Shaharear_2019.pdf",
+      "bytes": 574222,
+      "sha256": "ae826662dee69a48e391704f7d7a6c9bd9a0f4b9e21569c8f46418bd8aca325e",
+      "pages": 4
+    },
+    {
+      "file": "Aquarian_S1_datasheet.pdf",
+      "bytes": 561796,
+      "sha256": "81848f31891d18680171c3cf068eaf8f0ce2591a13564e21f00439494b83137f",
+      "pages": 11
+    },
+    {
+      "file": "OPA2350_TI_datasheet.pdf",
+      "bytes": 1498482,
+      "sha256": "58f7ccdc6f396007644e88f06cfcc61cf38f7311883aa635c322d5ef95b372da",
+      "pages": 44
+    }
+  ]
+}

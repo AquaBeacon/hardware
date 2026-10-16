@@ -1,0 +1,71 @@
+* ============================================================
+*  AquaBeacon CHILD_PWR -- 逆接続 (XT30を裏返して挿した) ケース
+*  電池+ が GND ピンへ、電池- が VBAT ピンへ入る -> V(vbat) = -VBAT0
+*
+*  検証したいこと:
+*   1) Q1(2SJ349, D=電池側 S=負荷側)が OFF のままで VBAT_M に電圧が出ないこと
+*   2) D1(SMBJ15A)は Q1 の前段にあるため逆接時は「順方向」に導通し電池を短絡する
+*      -> ヒューズが溶断するまでの TVS 順方向電流/I2t が IFSM=100A(8.3ms)以内か
+*   3) ヒューズ溶断I2t (速断/普通/遅動) ごとの溶断時間
+*
+*  ヒューズは I2t しきい値で抵抗が跳ね上がる挙動モデル。
+*  実行は sim/child_pwr_verify.py から。.param 行は手で書き換えないこと。
+* ============================================================
+
+.param VBAT0=12.6
+.param RINT=50m
+.param RCAB=30m
+.param LCAB=1u
+.param RFUSE=30m
+.param RSW=30m
+.param RSHUNT=2m
+.param TCON=200u
+.param I2TMELT=5.0       ; 5x20 3A ヒューズの溶断I2t [A^2*s] (速断=5-10 / 普通=15-30 / 遅動=40-70)
+
+* ---------------- 電池を逆向きに挿す ----------------
+Vbat  nb   0    {-VBAT0}
+Rint  nb   nb2  {RINT}
+Lcab  nb2  nb3  {LCAB} Rser={RCAB} Rpar=20
+S_CON nb3  vbat ncon 0 SWC
+Vcon  ncon 0    PWL(0 0 {TCON} 0 {TCON+1u} 1)
+.model SWC SW(Ron=5m Roff=10Meg Vt=0.5 Vh=0)
+
+* ---------------- F1: 溶断モデル付き 3A管ヒューズ ----------------
+Rfuse vbat vbatf R={RFUSE} + 1Meg*limit((V(ni2t)-{I2TMELT})/(0.05*{I2TMELT}),0,1)
+Bi2t  0    ni2t  I=I(Rfuse)*I(Rfuse)
+Ci2t  ni2t 0     1
+
+* ---------------- D1: SMBJ15A -- 逆接時は順方向導通 ----------------
+* 順方向: Vf≈1.2V@10A, 3.5V@100A (IFSM=100A/8.3ms半波)
+D1 0 vbatf TVSFWD
+.model TVSFWD D(Is=2e-9 N=1.6 Rs=0.025 Cjo=1.5n)
+* V(ni2ttvs) = TVS順方向の ∫i^2 dt
+Bi2tv 0 ni2ttvs I=I(D1)*I(D1)
+Ci2tv ni2ttvs 0 1
+
+* ---------------- Q1: 2SJ349 (逆接時は遮断されるべき) ----------------
+M1 vbatf qg vbatp J349
+Rg qg 0 100k
+.model J349 VDMOS(pchan Vto=-1.5 Kp=40 Lambda=0.01 Rd=35m Rs=5m Rg=2
++ Cgs=2n Cgdmax=1n Cgdmin=50p Cjo=1n Is=1e-12 mfg=Toshiba Vds=-60 Ron=45m Qg=50n)
+
+* ---------------- 下流 (電圧が出ないことを確認する) ----------------
+Rsw    vbatp  vbatsw {RSW}
+Rshunt vbatsw vbatm  {RSHUNT}
+Cblk vbatm 0 100u Rser=0.3     ; C_BLK 100u/25V (rev: Q1遮断で下流無関係だが整合)
+Cbk1 vbatm 0 10u  Rser=0.02
+* 下流の等価負荷 (5V系 + ライト系がぶら下がった状態)
+Rload vbatm 0 11
+
+* ---------------- 測定用の派生量 ----------------
+* V(nvgs1)=Q1のVgs, V(nvds1)=Q1のVds (定格 +-20V / -60V に対する確認)
+Bvgs1 0 nvgs1 I=V(qg)-V(vbatp)
+Rvgs1 nvgs1 0 1
+Bvds1 0 nvds1 I=V(vbatf)-V(vbatp)
+Rvds1 nvds1 0 1
+
+.ic V(vbat)=0 V(vbatf)=0 V(vbatp)=0 V(vbatsw)=0 V(vbatm)=0 V(ni2t)=0 V(ni2ttvs)=0 V(qg)=0
+
+.options plotwinsize=0
+.tran 0 20m 0 2u uic
+.end

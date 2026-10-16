@@ -1,0 +1,124 @@
+* ============================================================
+*  AquaBeacon CHILD_PWR (C-PWR) v1.0 -- normal operation
+*  build_child_pwr.py のネット表と1対1対応:
+*   J_BAT(XT30) -> F1(3A) -> D1(SMBJ15A) -> Q1(2SJ349 逆接保護Pch)
+*    -> SW_PWR(トグル3A) -> J_INAS(INA226シャント) -> VBAT_M
+*    -> C_BLK 100u + C_BK1 10u
+*    -> PS1(LXDC55 5V) -> V5D -> REG3D/REG3A(NJU7223F33) -> V3D/V3A
+*    -> J_LED -> 水中ライト -> LED_N -> D_LED(SMBJ15A) / Q2(TK7R4A10PL) -> GND
+*
+*  イベント:
+*   t=TCON  SW_PWR ONのままXT30を挿す(最悪突入)
+*   t=10ms  LEDライトPWM 1kHz 50% 開始(ライト約1A)
+*   t=15ms  V3D負荷 +100mA ステップ(Pico WiFiバースト)
+*  実行は sim/child_pwr_verify.py から。.param 行は手で書き換えないこと。
+* ============================================================
+
+.param VBAT0=12.6      ; 3S LiPo 満充電 4.2V/cell (終止は9.0V)
+.param RINT=50m        ; 3S LiPo 内部抵抗 (4000-5000mAh級)
+.param RCAB=30m        ; 電池ケーブル+XT30接触抵抗
+.param LCAB=1u         ; 電池ケーブル インダクタンス
+.param RFUSE=30m       ; 5x20 3A ガラス管ヒューズ 冷抵抗
+.param RSW=30m         ; トグルSW_PWR 接点抵抗
+.param RSHUNT=2m       ; INA226モジュール オンボードシャント
+.param TCON=200u       ; XT30 挿入時刻
+.param TSS=2m          ; LXDC55 ソフトスタート時間
+.param TPWM=10m        ; LEDライトPWM開始時刻
+
+* ---------------- 電池 + ケーブル + XT30挿入 ----------------
+Vbat  nb   0    {VBAT0}
+Rint  nb   nb2  {RINT}
+Lcab  nb2  nb3  {LCAB} Rser={RCAB} Rpar=20
+S_CON nb3  vbat ncon 0 SWC
+Vcon  ncon 0    PWL(0 0 {TCON} 0 {TCON+1u} 1)
+.model SWC SW(Ron=5m Roff=10Meg Vt=0.5 Vh=0)
+
+* ---------------- F1: 3A管ヒューズ (溶断判定は I2t で) ----------------
+Rfuse vbat vbatf {RFUSE}
+* V(ni2t) = ∫i^2 dt  [A^2*s]  ヒューズ溶断I2tと比較する
+Bi2t  0    ni2t  I=I(Rfuse)*I(Rfuse)
+Ci2t  ni2t 0     1
+
+* ---------------- D1: SMBJ15A TVS (逆方向クランプ精度重視) ----------------
+* VRWM=15V VBR(min)=16.7V VC=26.9V@22.3A -> Rs=(26.9-16.7)/22.3=0.46
+* 順方向は CHILD_PWR_rev.cir 側の別モデルで扱う
+D1 0 vbatf TVSCLAMP
+.model TVSCLAMP D(Is=1e-14 N=1 Rs=0.46 BV=16.7 IBV=1m Cjo=1.5n)
+
+* ---------------- Q1: 2SJ349 ハイサイド逆接保護 (D=電池側 S=負荷側) ----------------
+* Toshiba 2SJ349: VDSS=-60V VGSS=+-20V ID=-20A RDS(on)max=45m@VGS=-10V / 90m@-4V
+M1 vbatf qg vbatp J349
+Rg qg 0 100k
+.model J349 VDMOS(pchan Vto=-1.5 Kp=40 Lambda=0.01 Rd=35m Rs=5m Rg=2
++ Cgs=2n Cgdmax=1n Cgdmin=50p Cjo=1n Is=1e-12 mfg=Toshiba Vds=-60 Ron=45m Qg=50n)
+
+* ---------------- SW_PWR (トグル、投入時は既にON) + INA226シャント ----------------
+Rsw    vbatp  vbatsw {RSW}
+Rshunt vbatsw vbatm  {RSHUNT}
+
+* ---------------- バルクコンデンサ ----------------
+Cblk vbatm 0 100u Rser=0.3     ; C_BLK 100u/25V 電解 (突入低減で470u->100uへ。ESR0.3=100u/25V想定値, 実測後更新)
+Cbk1 vbatm 0 10u  Rser=0.02    ; C_BK1 10u/25V
+
+* ---------------- PS1: LXDC55 5V降圧 (Vin 6-14V, Iout<=1.5A, eta=0.90) ----------------
+B5   n5i 0   V=min( max(0,V(vbatm)-0.3), min(5, 5*max(0,time-{TCON})/{TSS}) )
+R5   n5i n5r 50m
+V5s  n5r v5d 0
+C5   v5d 0   22u Rser=0.02
+Bi5  vbatm 0 I=if(V(vbatm)>5, V(v5d)*I(V5s)/0.90/max(V(vbatm),5), 0)
+
+* ---------------- REG3D: NJU7223F33 -> V3D (3.3V/500mA, dropout 0.4V) ----------------
+B3D  n3di 0    V=min( max(0,V(v5d)-0.4), 3.3 )
+R3D  n3di n3dr 0.1
+V3Ds n3dr v3d  0
+C3D  v3d  0    10u Rser=0.05
+Bi3D v5d  0    I=I(V3Ds)+30u
+
+* ---------------- REG3A: NJU7223F33 -> V3A ----------------
+B3A  n3ai 0    V=min( max(0,V(v5d)-0.4), 3.3 )
+R3A  n3ai n3ar 0.1
+V3As n3ar v3a  0
+C3A  v3a  0    10u Rser=0.05
+Bi3A v5d  0    I=I(V3As)+30u
+
+* ---------------- 負荷 ----------------
+* V3D: C-MAIN(Pico 2W + センサ) 150mA、t=15ms で +100mA(WiFiバースト)
+BL3D v3d 0 I=(150m+if(time>15m,100m,0))*limit(V(v3d)/3.0,0,1)
+* V3A: RX基板 (NJM2137x2 + LM393)
+BL3A v3a 0 I=20m*limit(V(v3a)/3.0,0,1)
+* V5D: C-MAIN 5V系
+BL5D v5d 0 I=150m*limit(V(v5d)/4.5,0,1)
+
+* ---------------- 水中ライト + Q2 低側スイッチ ----------------
+* ライト: LEDストリング Vf≈9V + Rs=3.6 -> 12.6Vで約1.0A (ケーブル2m=2uH)
+Lled   vbatm nled1 2u Rser=0.05 Rpar=50
+Blight nled1 ledn  I=max(0, V(nled1,ledn)-9)/3.6
+* D_LED: SMBJ15A (K=LED_N, A=GND)
+Dled 0 ledn TVSCLAMP
+* Q2: TK7R4A10PL VDSS=100V VGSS=+-20V ID=50A
+*   RDS(on)max 7.4m@VGS=10V / 11.2m@4.5V, Vth=1.5-2.5V, Ciss=2800p, Qg=44n
+*   Vto=2.5 は Vth 最悪値(3.3Vゲート駆動の成立性を最悪条件で見る)
+M2   ledn qgl 0 TK7R4
+Rgpio npwm nled_pwm 50          ; Pico GPIO 出力インピーダンス
+Rgl  nled_pwm qgl 100           ; R_GL
+Rpdl qgl 0 100k                 ; R_PDL
+Vpwm npwm 0 PULSE(0 3.3 {TPWM} 100n 100n 500u 1m)
+.model TK7R4 VDMOS(nchan Vto=2.5 Kp=80 Lambda=0.005 Rd=6m Rs=1m Rg=2
++ Cgs=2.5n Cgdmax=1n Cgdmin=30p Cjo=1n Is=1e-12 Vds=100 Ron=7.4m Qg=44n)
+
+* ---------------- 測定用の派生量(ノード電圧として取り出す) ----------------
+* V(npq1)=Q1瞬時損失[W], V(nvgs1)=Q1のVgs[V], V(nvds1)=Q1のVds[V]
+Bpq1  0 npq1  I=(V(vbatf)-V(vbatp))*I(Rsw)
+Rpq1  npq1 0 1
+Bvgs1 0 nvgs1 I=V(qg)-V(vbatp)
+Rvgs1 nvgs1 0 1
+Bvds1 0 nvds1 I=V(vbatf)-V(vbatp)
+Rvds1 nvds1 0 1
+
+* 全ノード0Vから開始させる(uicを付けないとDC動作点で先にバルクが充電され突入が消える)
+.ic V(vbat)=0 V(vbatf)=0 V(vbatp)=0 V(vbatsw)=0 V(vbatm)=0
+.ic V(v5d)=0 V(v3d)=0 V(v3a)=0 V(ledn)=0 V(ni2t)=0 V(qg)=0
+
+.options plotwinsize=0
+.tran 0 25m 0 2u uic
+.end

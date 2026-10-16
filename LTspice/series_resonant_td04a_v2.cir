@@ -1,0 +1,57 @@
+* ============================================================
+*  Series-Resonant Single-Switch Driver for TD04A (200kHz)
+*  +9V -> L1 -> C1 -> M1(drain) -> GND  (single series loop)
+*  Open in LTspice (File > Open), then right-click > Run.
+* ============================================================
+
+* --- Power supply ---
+V1   vdd 0 9
+
+* --- Gate drive: 200kHz, 0..10V so the MOSFET fully turns on ---
+* period 4.835us = 206.8kHz (matched to the L1-C1 resonance)
+Vg   g   0  PULSE(0 10 0 20n 20n 2.0u 4.835u)
+Rg   g   gg 22
+
+* --- Switch (Toshiba 2SK4017, approx model below) ---
+M1   d   gg 0 0  SK4017
+
+* --- Series resonant tank: L1 and C1 in ONE series loop ---
+*     +9V --(L1)-- n1 --(C1)-- drain
+L1   vdd n1 470u
+C1   n1  d  1260p
+
+* --- DC operating point definition (C1 blocks DC) ---
+Rbl  d   0  1Meg
+
+* --- Freewheel path so inductor current has somewhere to go ---
+*     lets the tank ring instead of producing a hard spike
+D1   d   vdd  DFW
+
+* ============================================================
+*  OPTION: replace C1 above with the real TD04A (BVD model)
+*  Comment out "C1 n1 d 1260p" and uncomment the block below.
+*  C0 = static capacitance (~1260p), Lm/Cm/Rm = motional arm.
+* ============================================================
+* .subckt TD04A a b
+* C0  a b 1260p
+* Lm  a m1 {Lm}
+* Cm  m1 m2 {Cm}
+* Rm  m2 b 15
+* .param f0=200k  Lm=470u  Cm={1/((2*3.14159265*f0)*(2*3.14159265*f0)*Lm)}
+* .ends
+* X1  n1 d  TD04A
+
+* --- Device models ---
+.model SK4017 NMOS(VTO=1.5 KP=20 LAMBDA=0.01 RD=0.05 RS=0.02
++ CGSO=1n CGDO=0.3n CBD=0.8n)
+.model DFW D(Is=1u Rs=0.05 N=1.0 Cjo=100p)
+
+* --- Analysis: 300us transient ---
+.tran 0 300u 0 5n
+
+* --- After running, plot these signals in the waveform viewer ---
+* V(d)   : drain voltage (the tank ringing)
+* I(L1)  : the resonant current through L1 (should be sinusoidal)
+* I(C1)  : current into the transducer capacitance
+
+.end

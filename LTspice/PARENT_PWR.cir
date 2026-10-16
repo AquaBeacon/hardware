@@ -1,0 +1,114 @@
+* ============================================================
+*  AquaBeacon PARENT_PWR (P-PWR) v1.0 -- normal operation
+*  build_parent_pwr.py のネット表と1対1対応:
+*   J_BAT(XT30) -> F1(3A) -> D1(SMBJ15A) -> Q1(2SJ349 逆接保護Pch)
+*    -> SW_PWR(トグル3A) -> J_INAS(INA226シャント) -> VBAT_M
+*    -> C_BLK 100u + C_BK1 10u
+*    -> PS_A(LXDC55 5V)  -> V5L -> REG3S(NJU7223F33) -> V3S
+*    -> PS_B(MYMGK 5V)   -> V5C -> Pi Zero 2W
+*    -> SW_TX(トグル) -> VBAT_TX -> J_TX(XT30) -> TX基板 12V
+*
+*  イベント:
+*   t=TCON  SW_PWR ONのままXT30を挿す(最悪突入)
+*   t=10ms  V5C カメラ負荷ステップ 0.4A -> 1.2A (Pi Zero 2W 起動/撮影)
+*   t=15ms, 17ms  TXバースト (100us, 平均0.8A / ピーク1.66A相当)
+*   t=20ms  V3S負荷 +100mA ステップ
+*  実行は sim/parent_pwr_verify.py から。.param 行は手で書き換えないこと。
+* ============================================================
+
+.param VBAT0=12.6      ; 3S LiPo 満充電 (終止は9.0V)
+.param RINT=50m        ; 3S LiPo 内部抵抗 (2200-4000mAh級)
+.param RCAB=30m
+.param LCAB=1u
+.param RFUSE=30m
+.param RSW=30m         ; トグルSW_PWR 接点抵抗
+.param RSWTX=30m       ; トグルSW_TX 接点抵抗
+.param RSHUNT=2m
+.param TCON=200u
+.param TSS=2m
+
+* ---------------- 電池 + ケーブル + XT30挿入 ----------------
+Vbat  nb   0    {VBAT0}
+Rint  nb   nb2  {RINT}
+Lcab  nb2  nb3  {LCAB} Rser={RCAB} Rpar=20
+S_CON nb3  vbat ncon 0 SWC
+Vcon  ncon 0    PWL(0 0 {TCON} 0 {TCON+1u} 1)
+.model SWC SW(Ron=5m Roff=10Meg Vt=0.5 Vh=0)
+
+* ---------------- F1: 3A管ヒューズ ----------------
+Rfuse vbat vbatf {RFUSE}
+Bi2t  0    ni2t  I=I(Rfuse)*I(Rfuse)
+Ci2t  ni2t 0     1
+
+* ---------------- D1: SMBJ15A TVS (逆方向クランプ) ----------------
+D1 0 vbatf TVSCLAMP
+.model TVSCLAMP D(Is=1e-14 N=1 Rs=0.46 BV=16.7 IBV=1m Cjo=1.5n)
+
+* ---------------- Q1: 2SJ349 ハイサイド逆接保護 ----------------
+M1 vbatf qg vbatp J349
+Rg qg 0 100k
+.model J349 VDMOS(pchan Vto=-1.5 Kp=40 Lambda=0.01 Rd=35m Rs=5m Rg=2
++ Cgs=2n Cgdmax=1n Cgdmin=50p Cjo=1n Is=1e-12 mfg=Toshiba Vds=-60 Ron=45m Qg=50n)
+
+* ---------------- SW_PWR + INA226シャント + バルク ----------------
+Rsw    vbatp  vbatsw {RSW}
+Rshunt vbatsw vbatm  {RSHUNT}
+Cblk vbatm 0 100u Rser=0.3     ; C_BLK 100u/25V(100uF在庫, ESR0.3想定)
+Cbk1 vbatm 0 10u  Rser=0.02
+
+* ---------------- PS_A: LXDC55 5V (Vin 6-14V, Iout<=1.5A, eta=0.90) -> V5L ----------------
+B5L   n5li 0    V=min( max(0,V(vbatm)-0.3), min(5, 5*max(0,time-{TCON})/{TSS}) )
+R5L   n5li n5lr 50m
+V5Ls  n5lr v5l  0
+C5L   v5l 0     22u Rser=0.02
+Bi5L  vbatm 0   I=if(V(vbatm)>5, V(v5l)*I(V5Ls)/0.90/max(V(vbatm),5), 0)
+
+* ---------------- PS_B: MYMGK 5V (Iout<=6A, eta=0.92) -> V5C ----------------
+* 注: PS_B は現状4ピンソケットの暫定FP。モジュール確定後に要見直し。
+B5C   n5ci 0    V=min( max(0,V(vbatm)-0.3), min(5, 5*max(0,time-{TCON})/{TSS}) )
+R5C   n5ci n5cr 30m
+V5Cs  n5cr v5c  0
+C5C   v5c 0     47u Rser=0.02
+Bi5C  vbatm 0   I=if(V(vbatm)>5, V(v5c)*I(V5Cs)/0.92/max(V(vbatm),5), 0)
+
+* ---------------- REG3S: NJU7223F33 -> V3S (3.3V/500mA, dropout 0.4V) ----------------
+B3S  n3si 0    V=min( max(0,V(v5l)-0.4), 3.3 )
+R3S  n3si n3sr 0.1
+V3Ss n3sr v3s  0
+C3S  v3s  0    10u Rser=0.05
+Bi3S v5l  0    I=I(V3Ss)+30u
+
+* ---------------- 負荷 ----------------
+* V5L: P-MAIN ロジック5V (Pico + GNSS + センサ)
+BL5L v5l 0 I=300m*limit(V(v5l)/4.5,0,1)
+* V3S: P-MAIN 3.3V系。t=20ms で +100mA
+BL3S v3s 0 I=(150m+if(time>20m,100m,0))*limit(V(v3s)/3.0,0,1)
+* V5C: Pi Zero 2 W。t=10ms でアイドル0.4A -> 1.2A
+BL5C v5c 0 I=(400m+if(time>10m,800m,0))*limit(V(v5c)/4.5,0,1)
+
+* ---------------- SW_TX -> VBAT_TX -> J_TX -> TX基板 ----------------
+Rswtx vbatm vbattx {RSWTX}
+Ltx   vbattx ntx   1u Rser=0.03 Rpar=20
+Ctx   ntx 0        470u Rser=0.12     ; TX基板側バルク(build_tx_improved C1)
+* TXバースト: 100us幅, 2ms周期で2回 (200kHz 20サイクルの平均電流0.8A相当)
+Vtxen ntxen 0 PULSE(0 1 15m 100n 100n 100u 2m 2)
+BLTX  ntx 0 I=0.8*V(ntxen)*limit(V(ntx)/6,0,1)
+
+* ---------------- 測定用の派生量 ----------------
+Bpq1  0 npq1  I=(V(vbatf)-V(vbatp))*I(Rsw)
+Rpq1  npq1 0 1
+Bvgs1 0 nvgs1 I=V(qg)-V(vbatp)
+Rvgs1 nvgs1 0 1
+Bvds1 0 nvds1 I=V(vbatf)-V(vbatp)
+Rvds1 nvds1 0 1
+* V(npldo)=REG3S損失[W] (TO-220F 放熱器なしの熱評価用)
+Bpldo 0 npldo I=(V(v5l)-V(v3s))*I(V3Ss)
+Rpldo npldo 0 1
+
+* 全ノード0Vから開始させる(uicを付けないとDC動作点で先にバルクが充電され突入が消える)
+.ic V(vbat)=0 V(vbatf)=0 V(vbatp)=0 V(vbatsw)=0 V(vbatm)=0
+.ic V(v5l)=0 V(v5c)=0 V(v3s)=0 V(vbattx)=0 V(ntx)=0 V(ni2t)=0 V(qg)=0
+
+.options plotwinsize=0
+.tran 0 25m 0 2u uic
+.end

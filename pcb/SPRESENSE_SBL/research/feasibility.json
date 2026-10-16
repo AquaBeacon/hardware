@@ -1,0 +1,333 @@
+{
+  "status": "SYNTHETIC_STUDY_ONLY",
+  "hardware_validation": false,
+  "selected_transducer_bandwidth_hz": null,
+  "verified_20m_range": false,
+  "verified_10cm_accuracy": false,
+  "quantities": {
+    "sound_speed_assumed_m_s": 1500.0,
+    "range_m": 20.0,
+    "maximum_baseline_m": 1.0,
+    "receiver_coordinates_m": [
+      [
+        0.0,
+        0.5773502691896258,
+        0.0
+      ],
+      [
+        -0.5,
+        -0.2886751345948129,
+        0.0
+      ],
+      [
+        0.5,
+        -0.2886751345948129,
+        0.0
+      ]
+    ],
+    "sample_period_us": 5.208333333333333,
+    "broadside_tdoa_full_budget_us": 3.3333333333333335,
+    "one_sample_crossrange_m": 0.15625,
+    "roundtrip_ms": 26.666666666666668,
+    "full_budget_sound_speed_error_m_s": 7.5,
+    "full_budget_baseline_scale_error_mm": 5.0,
+    "full_budget_attitude_error_deg": 0.2864788975654116,
+    "parts_for_one_parent_and_one_child": 6,
+    "purchased_if_two_per_pack": 6,
+    "transducer_only_total_usd": 98.52,
+    "evaluation_pair_usd": 32.84,
+    "sample_count_8ms": 1536,
+    "pcm_4ch_16bit_MB_s": 1.536,
+    "pcm_4ch_24bit_MB_s": 2.304,
+    "pcm_4ch_int32_MB_s": 3.072,
+    "max_tdoa_us": 666.6666666666666,
+    "carrier_cycle_57k_us": 17.54385964912281
+  },
+  "geometry": [
+    {
+      "tilt_deg": 0,
+      "channel_sigma_us": 0.5,
+      "common_sigma_us": 10.0,
+      "position_error_p95_m": 0.05231992541450022,
+      "sigma_xyz_m": [
+        0.021222040429704225,
+        0.02122204042970433,
+        0.0075046868491616976
+      ]
+    },
+    {
+      "tilt_deg": 0,
+      "channel_sigma_us": 1.0,
+      "common_sigma_us": 10.0,
+      "position_error_p95_m": 0.10400644905385187,
+      "sigma_xyz_m": [
+        0.042444080859408304,
+        0.04244408085940837,
+        0.007514054050872113
+      ]
+    },
+    {
+      "tilt_deg": 0,
+      "channel_sigma_us": 2.0,
+      "common_sigma_us": 10.0,
+      "position_error_p95_m": 0.2067667869232362,
+      "sigma_xyz_m": [
+        0.08488816171881682,
+        0.08488816171881683,
+        0.007551406662418329
+      ]
+    },
+    {
+      "tilt_deg": 30,
+      "channel_sigma_us": 0.5,
+      "common_sigma_us": 10.0,
+      "position_error_p95_m": 0.05690163647023496,
+      "sigma_xyz_m": [
+        0.021548570183460788,
+        0.02122204473667596,
+        0.013866835594617821
+      ]
+    },
+    {
+      "tilt_deg": 30,
+      "channel_sigma_us": 1.0,
+      "common_sigma_us": 10.0,
+      "position_error_p95_m": 0.11264118780315432,
+      "sigma_xyz_m": [
+        0.042605397806994336,
+        0.04244408301827807,
+        0.02534735810510018
+      ]
+    },
+    {
+      "tilt_deg": 30,
+      "channel_sigma_us": 2.0,
+      "common_sigma_us": 10.0,
+      "position_error_p95_m": 0.22427519234025145,
+      "sigma_xyz_m": [
+        0.08496314556120863,
+        0.08488816280901912,
+        0.04942960951604136
+      ]
+    },
+    {
+      "tilt_deg": 60,
+      "channel_sigma_us": 0.5,
+      "common_sigma_us": 10.0,
+      "position_error_p95_m": 0.08723888131343649,
+      "sigma_xyz_m": [
+        0.022187612266731462,
+        0.021222079226728773,
+        0.03693013218023052
+      ]
+    },
+    {
+      "tilt_deg": 60,
+      "channel_sigma_us": 1.0,
+      "common_sigma_us": 10.0,
+      "position_error_p95_m": 0.1732738610591322,
+      "sigma_xyz_m": [
+        0.04292641543910752,
+        0.04244410030643016,
+        0.07357328330861553
+      ]
+    },
+    {
+      "tilt_deg": 60,
+      "channel_sigma_us": 2.0,
+      "common_sigma_us": 10.0,
+      "position_error_p95_m": 0.34614659273617604,
+      "sigma_xyz_m": [
+        0.08511301404520336,
+        0.08488817153932195,
+        0.14700272593612612
+      ]
+    },
+    {
+      "tilt_deg": 80,
+      "channel_sigma_us": 0.5,
+      "common_sigma_us": 10.0,
+      "position_error_p95_m": 0.2415976487698035,
+      "sigma_xyz_m": [
+        0.022463005582991386,
+        0.02122210533057507,
+        0.12028973678219189
+      ]
+    },
+    {
+      "tilt_deg": 80,
+      "channel_sigma_us": 1.0,
+      "common_sigma_us": 10.0,
+      "position_error_p95_m": 0.4811100929082562,
+      "sigma_xyz_m": [
+        0.0430668924088831,
+        0.04244411339100705,
+        0.24056867118716285
+      ]
+    },
+    {
+      "tilt_deg": 80,
+      "channel_sigma_us": 2.0,
+      "common_sigma_us": 10.0,
+      "position_error_p95_m": 0.9656951211649263,
+      "sigma_xyz_m": [
+        0.08517886844461839,
+        0.08488817814687313,
+        0.48113194103413254
+      ]
+    }
+  ],
+  "chirp_estimator": [
+    {
+      "bandwidth_hz": 2000.0,
+      "per_sample_snr_db": 0.0,
+      "echo": false,
+      "trials": 160,
+      "tdoa_rmse_us": 7.710440906113913,
+      "tdoa_abs_error_p95_us": 14.339014198103557
+    },
+    {
+      "bandwidth_hz": 2000.0,
+      "per_sample_snr_db": 0.0,
+      "echo": true,
+      "trials": 160,
+      "tdoa_rmse_us": 60.13359619813483,
+      "tdoa_abs_error_p95_us": 124.65995092386713
+    },
+    {
+      "bandwidth_hz": 2000.0,
+      "per_sample_snr_db": 10.0,
+      "echo": false,
+      "trials": 160,
+      "tdoa_rmse_us": 2.4166876896878717,
+      "tdoa_abs_error_p95_us": 4.8049802250951
+    },
+    {
+      "bandwidth_hz": 2000.0,
+      "per_sample_snr_db": 10.0,
+      "echo": true,
+      "trials": 160,
+      "tdoa_rmse_us": 57.48343516051944,
+      "tdoa_abs_error_p95_us": 125.74625140055647
+    },
+    {
+      "bandwidth_hz": 2000.0,
+      "per_sample_snr_db": 20.0,
+      "echo": false,
+      "trials": 160,
+      "tdoa_rmse_us": 0.6577334047150603,
+      "tdoa_abs_error_p95_us": 1.2851682988929416
+    },
+    {
+      "bandwidth_hz": 2000.0,
+      "per_sample_snr_db": 20.0,
+      "echo": true,
+      "trials": 160,
+      "tdoa_rmse_us": 58.00267714487903,
+      "tdoa_abs_error_p95_us": 119.5084959140654
+    },
+    {
+      "bandwidth_hz": 8000.0,
+      "per_sample_snr_db": 0.0,
+      "echo": false,
+      "trials": 160,
+      "tdoa_rmse_us": 1.7760387212264306,
+      "tdoa_abs_error_p95_us": 3.4352051265880483
+    },
+    {
+      "bandwidth_hz": 8000.0,
+      "per_sample_snr_db": 0.0,
+      "echo": true,
+      "trials": 160,
+      "tdoa_rmse_us": 27.783719164522026,
+      "tdoa_abs_error_p95_us": 52.71455982102415
+    },
+    {
+      "bandwidth_hz": 8000.0,
+      "per_sample_snr_db": 10.0,
+      "echo": false,
+      "trials": 160,
+      "tdoa_rmse_us": 0.5370936614578353,
+      "tdoa_abs_error_p95_us": 1.0298943532863565
+    },
+    {
+      "bandwidth_hz": 8000.0,
+      "per_sample_snr_db": 10.0,
+      "echo": true,
+      "trials": 160,
+      "tdoa_rmse_us": 25.867242424303395,
+      "tdoa_abs_error_p95_us": 51.831475507390934
+    },
+    {
+      "bandwidth_hz": 8000.0,
+      "per_sample_snr_db": 20.0,
+      "echo": false,
+      "trials": 160,
+      "tdoa_rmse_us": 0.19560152669892253,
+      "tdoa_abs_error_p95_us": 0.39882230591351836
+    },
+    {
+      "bandwidth_hz": 8000.0,
+      "per_sample_snr_db": 20.0,
+      "echo": true,
+      "trials": 160,
+      "tdoa_rmse_us": 27.78941867775904,
+      "tdoa_abs_error_p95_us": 52.69019117690985
+    },
+    {
+      "bandwidth_hz": 16000.0,
+      "per_sample_snr_db": 0.0,
+      "echo": false,
+      "trials": 160,
+      "tdoa_rmse_us": 1.0455336399751305,
+      "tdoa_abs_error_p95_us": 2.0213285609583385
+    },
+    {
+      "bandwidth_hz": 16000.0,
+      "per_sample_snr_db": 0.0,
+      "echo": true,
+      "trials": 160,
+      "tdoa_rmse_us": 10.560923144977181,
+      "tdoa_abs_error_p95_us": 20.96520761244665
+    },
+    {
+      "bandwidth_hz": 16000.0,
+      "per_sample_snr_db": 10.0,
+      "echo": false,
+      "trials": 160,
+      "tdoa_rmse_us": 0.284269359297854,
+      "tdoa_abs_error_p95_us": 0.5556557410335596
+    },
+    {
+      "bandwidth_hz": 16000.0,
+      "per_sample_snr_db": 10.0,
+      "echo": true,
+      "trials": 160,
+      "tdoa_rmse_us": 10.356050701429622,
+      "tdoa_abs_error_p95_us": 18.529887205511223
+    },
+    {
+      "bandwidth_hz": 16000.0,
+      "per_sample_snr_db": 20.0,
+      "echo": false,
+      "trials": 160,
+      "tdoa_rmse_us": 0.09235564350922423,
+      "tdoa_abs_error_p95_us": 0.1770091914498247
+    },
+    {
+      "bandwidth_hz": 16000.0,
+      "per_sample_snr_db": 20.0,
+      "echo": true,
+      "trials": 160,
+      "tdoa_rmse_us": 11.607561093455875,
+      "tdoa_abs_error_p95_us": 21.752116226424924
+    }
+  ],
+  "caveats": [
+    "No measured TVR/RVS, impedance, acoustic noise, or waterproofing data.",
+    "Estimator uses hypothetical bandlimited chirps, not SMC20D17H5 response.",
+    "Geometry assumes correct path detection, stationary nodes, uniform sound speed.",
+    "Geometry covariance excludes systematic errors; it is not a total accuracy budget.",
+    "Receiver calibration and actual ADC transfer response remain unmeasured."
+  ]
+}

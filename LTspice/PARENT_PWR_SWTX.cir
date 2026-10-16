@@ -1,0 +1,116 @@
+* ============================================================
+*  AquaBeacon PARENT_PWR -- SW_TX の「活線投入」専用ケース
+*
+*  既存の PARENT_PWR.cir は .ic で全ノード0Vからの**冷間投入**しか見ていない
+*  (SW_PWR も SW_TX も閉じた状態で XT30 を挿す)。しかし SW_TX は
+*  「12V TX 出力だけを運用中に ON/OFF する」ためのトグルなので、実際には
+*  **VBAT_M が 12.6V に充電済みの状態で、放電しきった Ctx(TX基板の C1)へ閉じる**。
+*  この条件は未検証だった (2026-08-03 レビューで判明)。
+*
+*  シーケンス:
+*   t=TCON   XT30 挿入(SW_PWR は ON、SW_TX は **OFF**)
+*   t=TSWTX  SW_TX を閉じる  <-- 本ケースの主対象(活線投入)
+*   t=15/17m TXバースト (100us, 平均0.8A) : CTX を下げたときのサグ確認用
+*
+*  見るもの:
+*   1. SW_TX 接点を通る突入ピーク電流 (定格 3A に対して何倍か)
+*   2. その I^2t (接点溶着・ヒューズの観点)
+*   3. **VBAT_M / V5L / V3S のディップ** -- ここが本命。Cblk(100u) が Ctx へ
+*      電荷を奪われるので、TX を入れた瞬間に Pico やカメラが落ちないかを見る
+*   4. TXバースト時の TX 側 12V サグ (CTX を下げる代償)
+*
+*  CTX を掃引して 470u / 220u / 100u を比較する。実行は sim/parent_pwr_swtx_verify.py。
+*  .param 行は手で書き換えないこと。
+* ============================================================
+
+.param VBAT0=12.6      ; 3S LiPo 満充電
+.param RINT=50m
+.param RCAB=30m
+.param LCAB=1u
+.param RFUSE=30m
+.param RSW=30m         ; トグル SW_PWR 接点抵抗
+.param RSWTX=30m       ; トグル SW_TX 接点抵抗 (25m を SW, 5m をセンス抵抗に分割)
+.param RSHUNT=2m
+.param TCON=200u
+.param TSS=2m
+.param TSWTX=10m       ; SW_TX を閉じる時刻(全レール整定後)
+.param CTX=470u        ; TX 基板の C1。470u(現行) / 220u / 100u を掃引する
+
+* ---------------- 電池 + ケーブル + XT30挿入 ----------------
+Vbat  nb   0    {VBAT0}
+Rint  nb   nb2  {RINT}
+Lcab  nb2  nb3  {LCAB} Rser={RCAB} Rpar=20
+S_CON nb3  vbat ncon 0 SWC
+Vcon  ncon 0    PWL(0 0 {TCON} 0 {TCON+1u} 1)
+.model SWC SW(Ron=5m Roff=10Meg Vt=0.5 Vh=0)
+
+* ---------------- F1: 3A管ヒューズ ----------------
+Rfuse vbat vbatf {RFUSE}
+Bi2t  0    ni2t  I=I(Rfuse)*I(Rfuse)
+Ci2t  ni2t 0     1
+
+* ---------------- D1: SMBJ15A TVS ----------------
+D1 0 vbatf TVSCLAMP
+.model TVSCLAMP D(Is=1e-14 N=1 Rs=0.46 BV=16.7 IBV=1m Cjo=1.5n)
+
+* ---------------- Q1: 2SJ349 ハイサイド逆接保護 ----------------
+M1 vbatf qg vbatp J349
+Rg qg 0 100k
+.model J349 VDMOS(pchan Vto=-1.5 Kp=40 Lambda=0.01 Rd=35m Rs=5m Rg=2
++ Cgs=2n Cgdmax=1n Cgdmin=50p Cjo=1n Is=1e-12 mfg=Toshiba Vds=-60 Ron=45m Qg=50n)
+
+* ---------------- SW_PWR + INA226シャント + バルク ----------------
+Rsw    vbatp  vbatsw {RSW}
+Rshunt vbatsw vbatm  {RSHUNT}
+Cblk vbatm 0 100u Rser=0.3
+Cbk1 vbatm 0 10u  Rser=0.02
+
+* ---------------- PS_A: LXDC55 5V -> V5L ----------------
+B5L   n5li 0    V=min( max(0,V(vbatm)-0.3), min(5, 5*max(0,time-{TCON})/{TSS}) )
+R5L   n5li n5lr 50m
+V5Ls  n5lr v5l  0
+C5L   v5l 0     22u Rser=0.02
+Bi5L  vbatm 0   I=if(V(vbatm)>5, V(v5l)*I(V5Ls)/0.90/max(V(vbatm),5), 0)
+
+* ---------------- PS_B: MYMGK 5V -> V5C ----------------
+B5C   n5ci 0    V=min( max(0,V(vbatm)-0.3), min(5, 5*max(0,time-{TCON})/{TSS}) )
+R5C   n5ci n5cr 30m
+V5Cs  n5cr v5c  0
+C5C   v5c 0     47u Rser=0.02
+Bi5C  vbatm 0   I=if(V(vbatm)>5, V(v5c)*I(V5Cs)/0.92/max(V(vbatm),5), 0)
+
+* ---------------- REG3S: NJU7223F33 -> V3S ----------------
+B3S  n3si 0    V=min( max(0,V(v5l)-0.4), 3.3 )
+R3S  n3si n3sr 0.1
+V3Ss n3sr v3s  0
+C3S  v3s  0    10u Rser=0.05
+Bi3S v5l  0    I=I(V3Ss)+30u
+
+* ---------------- 定常負荷(本ケースでは負荷ステップは入れない) ----------------
+BL5L v5l 0 I=300m*limit(V(v5l)/4.5,0,1)
+BL3S v3s 0 I=150m*limit(V(v3s)/3.0,0,1)
+BL5C v5c 0 I=400m*limit(V(v5c)/4.5,0,1)
+
+* ---------------- SW_TX(活線投入) -> VBAT_TX -> J_TX -> TX基板 ----------------
+* S_TX + Rsns で RSWTX 相当(25m + 5m)。電流は I(Rsns) で読む(抵抗電流は raw に必ず出る)
+S_TX  vbatm nswtx nswctl 0 SWTX
+Rsns  nswtx vbattx 5m
+Vswc  nswctl 0 PWL(0 0 {TSWTX} 0 {TSWTX+1u} 1)
+.model SWTX SW(Ron=25m Roff=10Meg Vt=0.5 Vh=0)
+Ltx   vbattx ntx   1u Rser=0.03 Rpar=20
+Ctx   ntx 0        {CTX} Rser=0.12
+* TXバースト: 100us幅, 2ms周期で2回
+Vtxen ntxen 0 PULSE(0 1 15m 100n 100n 100u 2m 2)
+BLTX  ntx 0 I=0.8*V(ntxen)*limit(V(ntx)/6,0,1)
+
+* ---------------- 派生量 ----------------
+* SW_TX 突入の I^2t (接点/ヒューズ評価用)
+Bi2ttx 0 ni2ttx I=I(Rsns)*I(Rsns)
+Ci2ttx ni2ttx 0 1
+
+.ic V(vbat)=0 V(vbatf)=0 V(vbatp)=0 V(vbatsw)=0 V(vbatm)=0
+.ic V(v5l)=0 V(v5c)=0 V(v3s)=0 V(vbattx)=0 V(ntx)=0 V(ni2t)=0 V(ni2ttx)=0 V(qg)=0
+
+.options plotwinsize=0
+.tran 0 22m 0 2u uic
+.end
